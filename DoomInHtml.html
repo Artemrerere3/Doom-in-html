@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <div id="main-menu">
+  
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RusDoom</title>
+    <style>
+        
+        #joystickContainer {
+            position: absolute;
+            left: 20%;
+            bottom: 70px;
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            background-color: #f0f0f0;
+        }
+
+        #joystickContainer2 {
+            position: absolute;
+            right: 20%;
+            bottom: 70px;
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            background-color: #f0f0f0;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            touch-action: none; /* Отключаем поведение по умолчанию для сенсорных экранов */
+            background-color: black; /* Черный фон для эффекта Doom */
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            z-index: 10; /* Убедитесь, что HUD выше остальных элементов */
+        }
+
+        #controls {
+            font-size: 15px;
+            margin-top: 10px;
+        }
+
+       .button {
+            position: absolute;
+            bottom: 40px; /* Поднимаем кнопку еще на 20px */
+            width: 80px;
+            height: 40px;
+            background-color: rgba(255, 0, 0, 0.7);
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            z-index: 10; /* Убедитесь, что кнопки выше остальных элементов */
+        }
+
+        #pistolButton {
+            left: 20px; /* Положение кнопки для пистолета */
+        }
+
+        #shotgunButton {
+            left: 120px; /* Положение кнопки для дробовика */
+        }
+
+        #bfgButton {
+            left: 220px; /* Положение кнопки для BFG */
+        }
+
+        #fireButton {
+            left: 320px; /* Положение кнопки для выстрела */
+            background-color: rgba(0, 255, 0, 0.7); /* Зеленый цвет для кнопки выстрела */
+        }
+
+        #weaponImage {
+            position: absolute;
+            bottom: 0px; /* Положение пистолета внизу экрана (20 пикселей выше) */
+            left: 50%;
+            transform: translateX(-50%); /* Центрируем изображение */
+            width: 150px; /* Ширина изображения пистолета */
+            height: auto; /* Автоматическая высота для сохранения пропорций */
+            pointer-events: none; /* Отключаем взаимодействие с изображением */
+            z-index: 5; /* Убедитесь, что изображение ниже HUD */
+            transition: bottom 0.1s; /* Плавная анимация при движении оружия */
+        }
+
+        #weaponImageShotgun {
+            position: absolute;
+            bottom: 0px; /* Положение дробовика внизу экрана (20 пикселей выше) */
+            left: 50%;
+            transform: translateX(-50%); /* Центрируем изображение дробовика */
+            width: 150px; /* Ширина изображения дробовика */
+            height: auto; /* Автоматическая высота для сохранения пропорций */
+            pointer-events: none; /* Отключаем взаимодействие с изображением */
+            z-index: 5; /* Убедитесь, что изображение дробовика ниже HUD */
+            display: none; /* Скрываем дробовик по умолчанию */
+            transition: bottom 0.1s; /* Плавная анимация при движении дробовика */
+        }
+
+        #weaponImageBFG {
+            position: absolute;
+            bottom: 0px; /* Положение BFG внизу экрана (20 пикселей выше) */
+            left: 50%;
+            transform: translateX(-50%); /* Центрируем изображение BFG */
+            width: 270px; /* Ширина изображения BFG */
+            height: auto; /* Автоматическая высота для сохранения пропорций */
+            pointer-events: none; /* Отключаем взаимодействие с изображением */
+            z-index: 5; /* Убедитесь, что изображение BFG ниже HUD */
+            display: none; /* Скрываем BFG по умолчанию */
+            transition: bottom 0.1s; /* Плавная анимация при движении BFG */
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            background-color: green; /* Цвет прицела по умолчанию */
+            transform: translate(-50%, -50%); /* Центрируем прицел */
+            z-index: 20; /* Убедитесь, что прицел выше остальных элементов */
+            border-radius: 50%; /* Круглая форма прицела */
+        }
+
+        /* Анимация увеличения дробовика */
+        @keyframes shotgunFire {
+            0% {
+                transform: translateX(-50%) scale(1);
+            }
+
+            50% {
+                transform: translateX(-50%) scale(1.3);
+            }
+
+            100% {
+                transform: translateX(-50%) scale(1);
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.8.0/nipplejs.min.js"></script>
+</head>
+
+<body>
+    <div id="hud">
+        <div id="health">Health: 100</div>
+        <div id="ammo">Ammo: 50</div>
+        <div id="weapon">Weapon: Pistol</div>
+        <div id="controls">Press 1 for Pistol, 2 for Shotgun, 3 for BFG</div>
+    </div>
+    <button id="pistolButton" class="button">Pistol</button>
+    <button id="shotgunButton" class="button">Shotgun</button>
+    <button id="bfgButton" class="button">BFG</button>
+    <button id="fireButton" class="button">Fire</button>
+    <img id="weaponImage" src="https://tcrf.net/images/d/d7/Doom_pistol.png" alt="Pistol">
+    <img id="weaponImageShotgun" src="http://i.imgur.com/VpGthpa.png" alt="Shotgun">
+    <img id="weaponImageBFG" src="https://static.wikia.nocookie.net/doom-rpg-rla/images/6/60/BFG9000HUD4x.png/revision/latest?cb=20230812222715" alt="BFG">
+    <div id="crosshair"></div>
+    <div id="joystickContainer"></div>
+    <div id="joystickContainer2"></div>
+
+    <script>
+        let scene, camera, renderer;
+        let moveSpeed = 0.05;
+        let yaw = 0;
+        let forwardBackward = 0;
+        let player;
+        let ammo = 50;
+        let weapon = "Pistol";
+        let targets = [];
+        const targetTextureURL = 'https://cdn.ebaumsworld.com/mediaFiles/picture/872200/81576292.gif';
+        let bfg;
+
+        class BFG {
+            constructor() {
+                this.name = "BFG";
+                this.ammo = 10;
+                this.damage = 100;
+                this.projectiles = [];
+            }
+
+            fire(camera) {
+                if (this.ammo > 0) {
+                    this.ammo--;
+                    const projectile = new BFGProjectile(camera);
+                    this.projectiles.push(projectile);
+                    scene.add(projectile.mesh);
+                }
+            }
+
+            update() {
+                this.projectiles.forEach((projectile, index) => {
+                    projectile.update();
+                    if (projectile.isDead) {
+                        scene.remove(projectile.mesh);
+                        this.projectiles.splice(index, 1);
+                    }
+                });
+            }
+        }
+
+        class BFGProjectile {
+            constructor(camera) {
+                this.speed = 1;
+                this.damage = 10000;
+                this.isDead = false;
+
+                const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+                const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                this.mesh = new THREE.Mesh(geometry, material);
+
+                this.mesh.position.copy(camera.position);
+                this.mesh.rotation.copy(camera.rotation);
+
+                const direction = new THREE.Vector3(0, 0, -1);
+                direction.applyQuaternion(camera.quaternion);
+                this.mesh.position.add(direction.multiplyScalar(1));
+                this.direction = direction;
+            }
+
+            update() {
+                this.mesh.position.add(this.direction.multiplyScalar(this.speed));
+
+                targets.forEach((target) => {
+                    if (this.mesh.position.distanceTo(target.position) < 1) {
+                        target.visible = false;
+                        this.isDead = true;
+                    }
+                });
+
+                if (this.mesh.position.z < -100) {
+                    this.isDead = true;
+                }
+            }
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            camera.position.set(0, 1.5, 0);
+
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 5, 5).normalize();
+            scene.add(directionalLight);
+
+            const floorGeometry = new THREE.PlaneGeometry(50, 50);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xc2b280 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            const playerGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+            const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+            player = new THREE.Mesh(playerGeometry, playerMaterial);
+            player.position.set(0, 0.5, 0);
+            scene.add(player);
+
+            createTargets();
+            createJoysticks();
+
+            document.getElementById('pistolButton').addEventListener('click', () => {
+                switchWeapon("Pistol", 50);
+            });
+
+            document.getElementById('shotgunButton').addEventListener('click', () => {
+                switchWeapon("Shotgun", 10);
+            });
+
+            document.getElementById('bfgButton').addEventListener('click', () => {
+                switchWeapon("BFG", 10);
+                bfg = new BFG();
+            });
+
+            document.getElementById('fireButton').addEventListener('click', () => {
+                fireWeapon();
+            });
+
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+
+        function createTargets() {
+            const targetGeometry = new THREE.PlaneGeometry(1, 2);
+            const targetMaterial = new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load(targetTextureURL), side: THREE.DoubleSide });
+            for (let i = 0; i < 5; i++) {
+                const target = new THREE.Mesh(targetGeometry, targetMaterial);
+                target.position.set((Math.random() - 0.5) * 20, 1, (Math.random() - 0.5) * 20);
+                target.rotation.y = Math.random() * Math.PI;
+                targets.push(target);
+                scene.add(target);
+            }
+        }
+
+        function createJoysticks() {
+            const joystickContainer = document.getElementById('joystickContainer');
+            const joystickContainer2 = document.getElementById('joystickContainer2');
+
+            if (joystickContainer && joystickContainer2) {
+                const joystickManager = nipplejs.create({
+                    zone: joystickContainer,
+                    mode: 'tatic',
+                    position: { left: '20%', bottom: '70px' },
+                    color: 'ed',
+                    size: 100
+                });
+
+                joystickManager.on('move', (evt, data) => {
+                    if (data.direction) {
+                        if (data.direction.y === 'up') forwardBackward = -1;
+                        else if (data.direction.y === 'down') forwardBackward = 1;
+                        else forwardBackward = 0;
+                    }
+                });
+
+                joystickManager.on('end', () => {
+                    forwardBackward = 0;
+                });
+
+                const joystickManager2 = nipplejs.create({
+                    zone: joystickContainer2,
+                    mode: 'tatic',
+                    position: { right: '20%', bottom: '20%' },
+                    color: 'blue',
+                    size: 100
+                });
+
+                joystickManager2.on('move', (evt, data) => {
+                    if (data.direction) {
+                        if (data.direction.x === 'left') {
+                            yaw += 0.1;
+                        } else if (data.direction.x === 'right') {
+                            yaw -= 0.1;
+                        }
+                    }
+                });
+            }
+        }
+
+        function switchWeapon(newWeapon, newAmmo) {
+            weapon = newWeapon;
+            ammo = newAmmo;
+            updateHUD();
+
+            const weaponImage = document.getElementById('weaponImage');
+            const weaponImageShotgun = document.getElementById('weaponImageShotgun');
+            const weaponImageBFG = document.getElementById('weaponImageBFG');
+            if (weapon === "Pistol") {
+                weaponImage.style.display = 'block';
+                weaponImageShotgun.style.display = 'none';
+                weaponImageBFG.style.display = 'none';
+            } else if (weapon === "Shotgun") {
+                weaponImage.style.display = 'none';
+                weaponImageShotgun.style.display = 'block';
+                weaponImageBFG.style.display = 'none';
+            } else if (weapon === "BFG") {
+                weaponImage.style.display = 'none';
+                weaponImageShotgun.style.display = 'none';
+                weaponImageBFG.style.display = 'block';
+            }
+        }
+
+        function fireWeapon() {
+            if (ammo > 0) {
+                ammo--;
+                updateHUD();
+
+                if (weapon === "Pistol") {
+                    // Логика стрельбы из пистолета
+                } else if (weapon === "Shotgun") {
+                    // Логика стрельбы из дробовика
+                    const weaponImageShotgun = document.getElementById('weaponImageShotgun');
+                    weaponImageShotgun.style.animation = 'hotgunFire 0.4s forwards';
+                    setTimeout(() => {
+                        weaponImageShotgun.style.animation = '';
+                    }, 400);
+                } else if (weapon === "BFG") {
+                    bfg.fire(camera);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const direction = new THREE.Vector3();
+            direction.x = Math.sin(yaw);
+            direction.z = Math.cos(yaw);
+            direction.y = 0;
+            direction.normalize();
+
+            const newPosition = {
+                x: player.position.x + direction.x * forwardBackward * moveSpeed,
+                y: player.position.y,
+                z: player.position.z + direction.z * forwardBackward * moveSpeed
+            };
+
+            player.position.set(newPosition.x, newPosition.y, newPosition.z);
+
+            camera.position.x = player.position.x;
+            camera.position.y = player.position.y + 0.75;
+            camera.position.z = player.position.z;
+            camera.rotation.y = yaw;
+
+            updateHUD();
+
+            if (weapon === "BFG") {
+                bfg.update();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updateHUD() {
+            document.getElementById('health').innerText = `Health: 100`;
+            document.getElementById('ammo').innerText = `Ammo: ${ammo}`;
+            document.getElementById('weapon').innerText = `Weapon: ${weapon}`;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>
